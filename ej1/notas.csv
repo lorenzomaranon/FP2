@@ -1,0 +1,45 @@
+dni_alumno,nombre_asignatura,nota
+10000001A,Matemáticas I,8.5
+10000001A,Física,6.0
+10000001A,Programación I,9.0
+10000002B,Matemáticas I,4.5
+10000002B,Física,5.0
+10000002B,Programación I,3.0
+10000003C,Lógica,7.0
+10000003C,Programación II,6.5
+10000004D,Física,2.0
+10000004D,Matemáticas I,5.0
+10000005E,Matemáticas I,9.5
+10000005E,Física,8.0
+10000005E,Programación I,10.0
+10000005E,Lógica,9.0
+10000006F,Estructura de Datos,5.0
+10000006F,Bases de Datos,6.0
+10000007G,Estructura de Datos,3.5
+10000007G,Redes de Computadores,4.0
+10000008H,Estadística,7.5
+10000008H,Bases de Datos,8.0
+10000009I,Matemáticas I,5.0
+10000009I,Programación I,5.5
+10000010J,Física,4.9
+10000010J,Lógica,6.0
+10000011K,Estructura de Datos,9.0
+10000011K,Sistemas Operativos,8.5
+10000012L,Ingeniería del Software,6.0
+10000012L,Inteligencia Artificial,7.5
+10000012L,Sistemas Operativos,5.0
+10000013M,Redes de Computadores,10.0
+10000013M,Estadística,9.0
+10000014N,Matemáticas I,3.0
+10000015O,Ingeniería del Software,8.0
+10000015O,Inteligencia Artificial,8.5
+10000016P,Programación I,2.5
+10000016P,Física,3.0
+10000017Q,Bases de Datos,6.0
+10000017Q,Estadística,5.5
+10000018R,Inteligencia Artificial,9.5
+10000018R,Sistemas Operativos,9.0
+10000018R,Ingeniería del Software,8.0
+10000019S,Matemáticas I,6.5
+10000020T,Física,5.0
+10000020T,Programación I,5.0
