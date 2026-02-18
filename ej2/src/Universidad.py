@@ -33,14 +33,15 @@ class Universidad:
 
             cargas_por_experimentalidad[coef].append(carga)
 
-        return {coef: sum(cargas) / len(cargas) for coef, cargas in cargas_por_experimentalidad.items()}
+        return {coef: round(sum(cargas) / len(cargas),2) for coef, cargas in cargas_por_experimentalidad.items()}
 
     def coeficientesMayorMenorCarga(self):
         if not self.departamentos:
             return None, None
 
-        mayor_carga_depto = max(self.departamentos, key=lambda d: d.getCargaReal())
-        menor_carga_depto = min(self.departamentos, key=lambda d: d.getCargaReal())
+        coef_mayor_media, mayor_media = max(self.mediaCargaRealConExperimentalidad().items(), key=lambda item: item[1])
+        
+        coef_menor_media, menor_media = min(self.mediaCargaRealConExperimentalidad().items(), key=lambda item: item[1])
 
-        return mayor_carga_depto.coef_experimentalidad, menor_carga_depto.coef_experimentalidad
+        return coef_mayor_media, coef_menor_media
     
