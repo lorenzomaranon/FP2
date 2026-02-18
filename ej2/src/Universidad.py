@@ -1,4 +1,4 @@
-import Departamento
+from Departamento import Departamento
 
 class Universidad:
     """Clase contenedora principal."""

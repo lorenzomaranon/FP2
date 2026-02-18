@@ -1,5 +1,4 @@
-from Departamento import Departamento
-from Universidad import Universidad
+
 from FactoriaUniversidad import FactoriaUniversidad
 
 
