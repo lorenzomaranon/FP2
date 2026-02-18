@@ -10,3 +10,9 @@ class Departamento:
 
     def __repr__(self):
         return f"Departamento('{self.nombre}')"
+    
+    def getCargaReal(self):
+        
+        return (self.numero_etc * self.coef_experimentalidad)/self.total_profesores
+    
+    
