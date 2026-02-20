@@ -15,7 +15,9 @@ class Registro:
 
     def distancia_ponderada(self, otro, pesos):
         # Aplica la fórmula: Wi * (Pi - qi)² [cite: 47, 48]
-        return sum(w * (p - q) ** 2 for w, p, q in zip(pesos, self.atributos, otro.atributos))
+        
+        suma_ponderada = sum(w * (p - q) ** 2 for w, p, q in zip(pesos, self.atributos, otro.atributos))
+        return math.sqrt(suma_ponderada)
 
     def calcula_distancia(self, otro, tipo="euclídea", pesos=None):
         # Selector de distancia según la cadena recibida [cite: 49]
