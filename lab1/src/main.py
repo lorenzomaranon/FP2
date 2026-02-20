@@ -98,7 +98,7 @@ def cargar_desde_csv(ruta_archivo):
 '''
 # --- Ejemplo de uso (comentado para que no interfiera con tu test actual) ---
 # if __name__ == "__main__":
-#     mis_datos = cargar_desde_csv("pacientes.csv")
+#     mis_datos = cargar_desde_csv("./lab1/data/pacientes.csv")
 #     if mis_datos:
 #         print(f"Se han cargado {len(mis_datos)} registros correctamente.")
 #         # Ahora podrías normalizarlos o buscar k-vecinos [cite: 63, 64]
