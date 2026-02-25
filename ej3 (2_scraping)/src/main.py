@@ -39,3 +39,8 @@ if __name__ == "__main__":
     mayor_coef, menor_coef = mi_u.coeficientesMayorMenorCarga()
     print(f"Coeficiente con mayor media: {mayor_coef}")
     print(f"Coeficiente con menor media: {menor_coef}")
+
+    # --- MEDIA DE CARGA DOCENTE POR SEDE (Pasada única) ---
+    medias_sede = mi_u.getMediaPonderadaSede() 
+    for sede, media in medias_sede.items():
+        print(f"Sede: {sede} -> Media de Carga: {media}")

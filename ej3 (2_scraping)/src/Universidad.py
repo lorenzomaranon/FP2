@@ -70,3 +70,34 @@ class Universidad:
         # Convertimos las listas internas a tuplas para cumplir con tu requisito
         return {sede: tuple(info) for sede, info in resultado.items()}
     
+    def getMediaPonderadaSede(self):
+        """
+        Calcula la media ponderada de la sede en una sola pasada.
+        Fórmula: Suma(Carga Real * Nº Profesores) / Suma(Nº Profesores de la sede)
+        """
+        # Usaremos un diccionario para llevar los acumulados: {sede: [suma_productos, suma_profesores]}
+        acumulados = {}
+        # Diccionario final con el resultado ya calculado
+        resultado = {}
+
+        for depto in self.departamentos:
+            sede = depto.sede if depto.sede else "Sede no definida"
+            
+            # 1. Calculamos los valores del departamento actual
+            # Carga Real * Profesores equivale a (ETC * Experimentalidad)
+            producto_depto = depto.getCargaReal() * depto.total_profesores
+            profesores_depto = depto.total_profesores
+            
+            # 2. Actualizamos los acumulados de la sede
+            if sede not in acumulados:
+                acumulados[sede] = [producto_depto, profesores_depto]
+            else:
+                acumulados[sede][0] += producto_depto
+                acumulados[sede][1] += profesores_depto
+            
+            # 3. Calculamos la media ponderada actualizada al vuelo
+            # Esto nos permite tener el resultado listo sin hacer un segundo bucle
+            if acumulados[sede][1] > 0:
+                resultado[sede] = round(acumulados[sede][0] / acumulados[sede][1], 2)
+
+        return resultado
