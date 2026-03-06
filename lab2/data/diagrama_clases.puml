@@ -1,0 +1,110 @@
+@startuml
+skinparam classAttributeIconSize 0
+hide empty members
+
+package "Registro.py" {
+  class Registro {
+    - datos: list[float]
+    - objetivo: object
+    + __init__(datos: list[float], objetivo: object = None)
+    - _validar_dimension(otro: Registro): None
+    + distancia_euclidea(otro: Registro): float
+    + distancia_manhattan(otro: Registro): float
+    + distancia_ponderada(otro: Registro, pesos: list[float]): float
+    + calcula_distancia(otro: Registro, tipo: str = "euclidea", pesos: list[float] = None): float
+    + normalizar(minimos: list[float], maximos: list[float]): Registro
+    + k_vecinos(lista_registros: list[Registro], k: int, tipo: str = "euclidea", pesos: list[float] = None): list[int]
+  }
+
+  class RegistroClasificacion {
+    + __init__(datos: list[float], objetivo: str)
+    + normalizar(minimos: list[float], maximos: list[float]): RegistroClasificacion
+  }
+
+  class RegistroRegresion {
+    + __init__(datos: list[float], objetivo: float)
+    + normalizar(minimos: list[float], maximos: list[float]): RegistroRegresion
+  }
+}
+
+package "dataset.py" {
+  abstract class DataSet {
+    - registros: list[Registro]
+    - nombres_atributos: list[str]
+    + __init__()
+    + set_cabeceras(cabeceras: list[str]): None
+    {abstract} + agregar_registro(registro: Registro): None
+    + calcular_min_max(): tuple[list[float], list[float]]
+    + crear_subconjunto(registros: list[Registro]): DataSet
+  }
+
+  class DataSetClasificacion {
+    + agregar_registro(registro: RegistroClasificacion): None
+  }
+
+  class DataSetRegresion {
+    + agregar_registro(registro: RegistroRegresion): None
+  }
+}
+
+package "modelos.py" {
+  abstract class Modelo {
+    - datos_entrenamiento: DataSet
+    + __init__()
+    + entrenar(datos: DataSet): None
+    {abstract} + predecir(registro: Registro)
+  }
+
+  class Clasificador_kNN {
+    - k: int
+    - distancia: str
+    - pesos: list[float]
+    + __init__(k: int, distancia: str = "euclidea", pesos: list[float] = None)
+    + predecir(registro: Registro): str
+  }
+
+  class Regresor_kNN {
+    - k: int
+    - distancia: str
+    - pesos: list[float]
+    + __init__(k: int, distancia: str = "euclidea", pesos: list[float] = None)
+    + predecir(registro: Registro): float
+  }
+}
+
+package "factoria.py" {
+  class FactoriaCSV {
+    {static} + crear_dataset_clasificacion(ruta_archivo: str, indice_objetivo: int = -1): DataSetClasificacion
+    {static} + crear_dataset_regresion(ruta_archivo: str, indice_objetivo: int = -1): DataSetRegresion
+  }
+
+  class FactoriaXLS {
+    {static} + crear_dataset_clasificacion(ruta_archivo: str, indice_objetivo: int = -1): DataSetClasificacion
+    {static} + crear_dataset_regresion(ruta_archivo: str, indice_objetivo: int = -1): DataSetRegresion
+  }
+}
+
+RegistroClasificacion --|> Registro
+RegistroRegresion --|> Registro
+
+DataSetClasificacion --|> DataSet
+DataSetRegresion --|> DataSet
+
+Clasificador_kNN --|> Modelo
+Regresor_kNN --|> Modelo
+
+DataSet o-- "0..*" Registro : registros
+Modelo --> DataSet : entrena con
+Clasificador_kNN ..> DataSetClasificacion
+Regresor_kNN ..> DataSetRegresion
+
+FactoriaCSV ..> DataSetClasificacion
+FactoriaCSV ..> DataSetRegresion
+FactoriaCSV ..> RegistroClasificacion
+FactoriaCSV ..> RegistroRegresion
+
+FactoriaXLS ..> DataSetClasificacion
+FactoriaXLS ..> DataSetRegresion
+FactoriaXLS ..> RegistroClasificacion
+FactoriaXLS ..> RegistroRegresion
+@enduml
