@@ -1,177 +1,189 @@
-﻿import csv
+import csv
+import re
 import tempfile
 from pathlib import Path
 
-from Registro import Registro, RegistroClasificacion, RegistroRegresion
-from dataset import DataSetClasificacion, DataSetRegresion
+from dataset import DataSet
 from factoria import FactoriaCSV, FactoriaXLS
 from modelos import Clasificador_kNN, Regresor_kNN
 
 
-def titulo(texto: str) -> None:
-    print("\n" + "=" * 72)
-    print(texto)
-    print("=" * 72)
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR.parent / "data"
 
 
-def probar_registro() -> None:
-    titulo("1) Pruebas de la clase Registro")
-
-    r1 = Registro([1.0, 2.0, 3.0, 4.0])
-    r2 = Registro([2.0, 2.5, 2.0, 8.0])
-    pesos = [1.0, 0.5, 2.0, 1.0]
-
-    print("r1:", r1)
-    print("r2:", r2)
-    print("Distancia euclidea:", round(r1.distancia_euclidea(r2), 4))
-    print("Distancia manhattan:", round(r1.distancia_manhattan(r2), 4))
-    print("Distancia ponderada:", round(r1.distancia_ponderada(r2, pesos), 4))
-
-    r1_norm = r1.normalizar([0.0, 0.0, 0.0, 0.0], [10.0, 10.0, 10.0, 10.0])
-    print("r1 normalizado:", r1_norm)
-
-    base = [
-        Registro([1.0, 2.0, 3.0, 4.0]),
-        Registro([2.0, 2.5, 2.0, 8.0]),
-        Registro([1.2, 1.9, 2.8, 4.1]),
-        Registro([9.0, 9.0, 9.0, 9.0]),
-    ]
-    print("Indices de 2 vecinos mas cercanos a r1:", r1.k_vecinos(base, k=2, tipo="euclidea"))
+def imprimir_resumen(nombre: str, dataset: DataSet) -> None:
+    total = len(dataset.registros)
+    total_atributos = len(dataset.nombres_atributos)
+    print(f"[{nombre}] registros={total}, atributos={total_atributos}")
+    if total:
+        print(f"  primer registro: {dataset.registros[0]}")
 
 
-def construir_dataset_manual() -> tuple[DataSetClasificacion, DataSetRegresion]:
-    titulo("2) Pruebas de DataSet y Registros especializados")
+def extraer_cabeceras_wine(ruta_wine_names: Path) -> list[str]:
+    lineas = ruta_wine_names.read_text(encoding="utf-8", errors="ignore").splitlines()
+    capturando = False
+    atributos: list[str] = []
 
-    ds_clas = DataSetClasificacion()
-    ds_clas.set_cabeceras(["x1", "x2", "etiqueta"])
-    ds_clas.agregar_registro(RegistroClasificacion([1.0, 1.0], "A"))
-    ds_clas.agregar_registro(RegistroClasificacion([1.8, 1.2], "A"))
-    ds_clas.agregar_registro(RegistroClasificacion([8.5, 8.9], "B"))
-    ds_clas.agregar_registro(RegistroClasificacion([9.1, 8.2], "B"))
+    for linea in lineas:
+        if "The attributes are" in linea:
+            capturando = True
+            continue
 
-    mins_c, maxs_c = ds_clas.calcular_min_max()
-    print("Clasificacion - nombres atributos:", ds_clas.nombres_atributos)
-    print("Clasificacion - minimos:", mins_c)
-    print("Clasificacion - maximos:", maxs_c)
+        if not capturando:
+            continue
 
-    sub_clas = ds_clas.crear_subconjunto(ds_clas.registros[:2])
-    print("Subconjunto clasificacion (2 primeros):", len(sub_clas.registros), "registros")
+        texto = linea.strip()
+        coincidencia = re.match(r"^(\d+)\)\s*(.+)$", texto)
+        if coincidencia is None:
+            continue
 
-    ds_reg = DataSetRegresion()
-    ds_reg.set_cabeceras(["x1", "x2", "precio"])
-    ds_reg.agregar_registro(RegistroRegresion([1.0, 1.0], 10.0))
-    ds_reg.agregar_registro(RegistroRegresion([2.0, 1.0], 14.0))
-    ds_reg.agregar_registro(RegistroRegresion([8.0, 9.0], 50.0))
-    ds_reg.agregar_registro(RegistroRegresion([9.0, 8.0], 53.0))
+        indice = int(coincidencia.group(1))
+        if not (1 <= indice <= 13):
+            continue
 
-    mins_r, maxs_r = ds_reg.calcular_min_max()
-    print("Regresion - nombres atributos:", ds_reg.nombres_atributos)
-    print("Regresion - minimos:", mins_r)
-    print("Regresion - maximos:", maxs_r)
+        nombre = " ".join(coincidencia.group(2).split())
+        atributos.append(nombre)
+        if len(atributos) == 13:
+            break
 
-    sub_reg = ds_reg.crear_subconjunto(ds_reg.registros[1:3])
-    print("Subconjunto regresion (indices 1 y 2):", len(sub_reg.registros), "registros")
+    if len(atributos) != 13:
+        raise ValueError("No fue posible extraer las 13 cabeceras de wine.names.")
 
-    return ds_clas, ds_reg
+    return ["Class"] + atributos
 
 
-def probar_modelos(ds_clas: DataSetClasificacion, ds_reg: DataSetRegresion) -> None:
-    titulo("3) Pruebas de modelos")
+def crear_csv_temporal_wine(ruta_wine_data: Path, ruta_wine_names: Path) -> Path:
+    cabeceras = extraer_cabeceras_wine(ruta_wine_names)
 
-    clasificador = Clasificador_kNN(k=3, distancia="euclidea")
-    clasificador.entrenar(ds_clas)
-    consulta_c = RegistroClasificacion([1.4, 1.1], "?")
-    pred_c = clasificador.predecir(consulta_c)
-    print("Prediccion clasificacion para", consulta_c.datos, "->", pred_c)
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        newline="",
+        suffix=".csv",
+        delete=False,
+    ) as temporal:
+        escritor = csv.writer(temporal)
+        escritor.writerow(cabeceras)
 
-    regresor = Regresor_kNN(k=2, distancia="manhattan")
-    regresor.entrenar(ds_reg)
-    consulta_r = RegistroRegresion([8.7, 8.1], 0.0)
-    pred_r = regresor.predecir(consulta_r)
-    print("Prediccion regresion para", consulta_r.datos, "->", round(pred_r, 4))
+        with ruta_wine_data.open(mode="r", encoding="utf-8", newline="") as archivo_data:
+            lector = csv.reader(archivo_data)
+            for fila in lector:
+                if not fila:
+                    continue
+                escritor.writerow([valor.strip() for valor in fila])
 
-
-def escribir_csv(path_csv: Path, cabecera: list[str], filas: list[list[object]]) -> None:
-    with open(path_csv, mode="w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(cabecera)
-        writer.writerows(filas)
-
-
-def probar_factorias_csv() -> None:
-    titulo("4) Pruebas de FactoriaCSV")
-
-    with tempfile.TemporaryDirectory() as tmp:
-        ruta_tmp = Path(tmp)
-
-        archivo_clas = ruta_tmp / "clasificacion.csv"
-        escribir_csv(
-            archivo_clas,
-            ["x1", "x2", "etiqueta"],
-            [
-                [1.0, 1.0, "A"],
-                [2.0, 1.5, "A"],
-                [8.0, 9.0, "B"],
-            ],
-        )
-
-        ds_clas = FactoriaCSV.crear_dataset_clasificacion(str(archivo_clas))
-        print("CSV clasificacion -> registros:", len(ds_clas.registros), "cabeceras:", ds_clas.nombres_atributos)
-
-        archivo_reg = ruta_tmp / "regresion.csv"
-        escribir_csv(
-            archivo_reg,
-            ["objetivo", "x1", "x2"],
-            [
-                [10.0, 1.0, 1.0],
-                [12.0, 1.5, 1.2],
-                [40.0, 7.5, 8.0],
-            ],
-        )
-
-        ds_reg = FactoriaCSV.crear_dataset_regresion(str(archivo_reg), indice_objetivo=0)
-        print("CSV regresion -> registros:", len(ds_reg.registros), "cabeceras:", ds_reg.nombres_atributos)
+    return Path(temporal.name)
 
 
-def probar_factorias_xls() -> None:
-    titulo("5) Pruebas de FactoriaXLS (opcional)")
-
-    try:
-        import pandas as pd
-    except ImportError:
-        print("Saltado: pandas no esta instalado.")
+def probar_registro(dataset: DataSet) -> None:
+    if len(dataset.registros) < 2:
+        print("No hay suficientes registros para probar distancias.")
         return
 
-    with tempfile.TemporaryDirectory() as tmp:
-        ruta_tmp = Path(tmp)
+    r0 = dataset.registros[0]
+    r1 = dataset.registros[1]
+    pesos = [1.0] * len(r0.datos)
 
-        archivo_xls = ruta_tmp / "clasificacion.xlsx"
-        df = pd.DataFrame(
-            {
-                "x1": [1.0, 2.0, 8.0],
-                "x2": [1.1, 1.3, 9.2],
-                "etiqueta": ["A", "A", "B"],
-            }
-        )
+    print("\n[Pruebas Registro]")
+    print(f"  distancia euclidea: {r0.distancia_euclidea(r1):.4f}")
+    print(f"  distancia manhattan: {r0.distancia_manhattan(r1):.4f}")
+    print(f"  distancia ponderada: {r0.distancia_ponderada(r1, pesos):.4f}")
 
-        try:
-            df.to_excel(archivo_xls, index=False)
-            ds = FactoriaXLS.crear_dataset_clasificacion(str(archivo_xls))
-            print("XLS clasificacion -> registros:", len(ds.registros), "cabeceras:", ds.nombres_atributos)
-        except Exception as exc:
-            print("Saltado: no se pudo probar Excel en este entorno ->", exc)
+    minimos, maximos = dataset.calcular_min_max()
+    r0_normalizado = r0.normalizar(minimos, maximos)
+    print(f"  registro normalizado: {r0_normalizado}")
+
+    vecinos = r0.k_vecinos(dataset.registros[1:21], k=5, tipo="euclidea")
+    print(f"  indices de 5 vecinos (sobre muestra de 20): {vecinos}")
+
+
+def probar_dataset(dataset: DataSet) -> None:
+    print("\n[Pruebas DataSet]")
+    minimos, maximos = dataset.calcular_min_max()
+    if minimos and maximos:
+        print(f"  minimos (primeros 5): {minimos[:5]}")
+        print(f"  maximos (primeros 5): {maximos[:5]}")
+
+    subconjunto = dataset.crear_subconjunto(dataset.registros[:50])
+    print(f"  subconjunto creado con {len(subconjunto.registros)} registros")
+
+
+def probar_clasificador(nombre: str, dataset) -> None:
+    if len(dataset.registros) < 6:
+        print(f"\n[{nombre}] no hay suficientes registros para clasificar.")
+        return
+
+    entrenamiento = dataset.crear_subconjunto(dataset.registros[1:])
+    consulta = dataset.registros[0]
+
+    modelo = Clasificador_kNN(k=5, distancia="manhattan")
+    modelo.entrenar(entrenamiento)
+    prediccion = modelo.predecir(consulta)
+
+    print(f"\n[Clasificador kNN - {nombre}]")
+    print(f"  objetivo real: {consulta.objetivo}")
+    print(f"  prediccion: {prediccion}")
+
+
+def probar_regresor(nombre: str, dataset) -> None:
+    if len(dataset.registros) < 6:
+        print(f"\n[{nombre}] no hay suficientes registros para regresion.")
+        return
+
+    entrenamiento = dataset.crear_subconjunto(dataset.registros[1:])
+    consulta = dataset.registros[0]
+    pesos = [1.0] * len(consulta.datos)
+
+    modelo = Regresor_kNN(k=5, distancia="ponderada", pesos=pesos)
+    modelo.entrenar(entrenamiento)
+    prediccion = modelo.predecir(consulta)
+
+    print(f"\n[Regresor kNN - {nombre}]")
+    print(f"  objetivo real: {consulta.objetivo:.4f}")
+    print(f"  prediccion: {prediccion:.4f}")
 
 
 def main() -> None:
-    print("INICIO DE PRUEBAS LABORATORIO 2")
+    ruta_boston = DATA_DIR / "BostonHousing.csv"
+    ruta_diabetes = DATA_DIR / "diabetes.csv"
+    ruta_iris = DATA_DIR / "iris.xlsx"
+    ruta_wine_index = DATA_DIR / "wine" / "Index"
+    ruta_wine_data = DATA_DIR / "wine" / "wine.data"
+    ruta_wine_names = DATA_DIR / "wine" / "wine.names"
 
-    probar_registro()
-    ds_clas, ds_reg = construir_dataset_manual()
-    probar_modelos(ds_clas, ds_reg)
-    probar_factorias_csv()
-    probar_factorias_xls()
+    print("=== Carga de datasets ===")
+    dataset_diabetes = FactoriaCSV.crear_dataset_clasificacion(str(ruta_diabetes))
+    dataset_boston = FactoriaCSV.crear_dataset_regresion(str(ruta_boston), indice_objetivo=-2)
+    imprimir_resumen("Diabetes (clasificacion)", dataset_diabetes)
+    imprimir_resumen("Boston (regresion, objetivo MEDV)", dataset_boston)
 
-    print("\nFIN DE PRUEBAS")
+    print("\n=== Archivos wine ===")
+    print(ruta_wine_index.read_text(encoding="utf-8", errors="ignore").strip())
+    ruta_wine_csv = crear_csv_temporal_wine(ruta_wine_data, ruta_wine_names)
+    try:
+        dataset_wine = FactoriaCSV.crear_dataset_clasificacion(str(ruta_wine_csv), indice_objetivo=0)
+    finally:
+        ruta_wine_csv.unlink(missing_ok=True)
+    imprimir_resumen("Wine (clasificacion)", dataset_wine)
+
+    print("\n=== Archivo iris.xlsx ===")
+    dataset_iris = None
+    try:
+        dataset_iris = FactoriaXLS.crear_dataset_clasificacion(str(ruta_iris))
+        imprimir_resumen("Iris (clasificacion)", dataset_iris)
+    except ImportError as error:
+        print(f"No se pudo leer iris.xlsx: {error}")
+
+    probar_registro(dataset_diabetes)
+    probar_dataset(dataset_diabetes)
+
+    probar_clasificador("Diabetes", dataset_diabetes)
+    probar_clasificador("Wine", dataset_wine)
+    if dataset_iris is not None:
+        probar_clasificador("Iris", dataset_iris)
+
+    probar_regresor("BostonHousing", dataset_boston)
 
 
 if __name__ == "__main__":
