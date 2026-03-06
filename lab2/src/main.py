@@ -1,9 +1,11 @@
 import csv
 import re
 import tempfile
+from collections import Counter
 from pathlib import Path
+from random import Random
 
-from dataset import DataSet
+from dataset import DataSet, DataSetClasificacion, DataSetRegresion
 from factoria import FactoriaCSV, FactoriaXLS
 from modelos import Clasificador_kNN, Regresor_kNN
 
@@ -18,6 +20,69 @@ def imprimir_resumen(nombre: str, dataset: DataSet) -> None:
     print(f"[{nombre}] registros={total}, atributos={total_atributos}")
     if total:
         print(f"  primer registro: {dataset.registros[0]}")
+
+
+def imprimir_contexto_registro(dataset: DataSet, limite: int = 4) -> None:
+    if not dataset.registros:
+        return
+
+    consulta = dataset.registros[0]
+    pares = list(zip(dataset.nombres_atributos, consulta.datos))
+    muestra = pares[:limite]
+
+    print("  Contexto del caso de prueba (primer registro):")
+    for nombre, valor in muestra:
+        print(f"    {nombre} = {valor}")
+
+    if len(pares) > limite:
+        restantes = len(pares) - limite
+        print(f"    ... ({restantes} atributos mas)")
+
+
+def evaluar_clasificador_holdout(
+    dataset: DataSetClasificacion, k: int, distancia: str
+) -> tuple[float, int]:
+    if len(dataset.registros) < 10:
+        return 0.0, 0
+
+    registros = dataset.registros.copy()
+    Random(42).shuffle(registros)
+    tam_test = max(1, len(registros) // 5)
+    test = registros[:tam_test]
+    entrenamiento = dataset.crear_subconjunto(registros[tam_test:])
+
+    modelo = Clasificador_kNN(k=k, distancia=distancia)
+    modelo.entrenar(entrenamiento)
+
+    aciertos = 0
+    for registro in test:
+        if modelo.predecir(registro) == registro.objetivo:
+            aciertos += 1
+
+    return aciertos / len(test), len(test)
+
+
+def evaluar_regresor_holdout(
+    dataset: DataSetRegresion, k: int, distancia: str, pesos: list[float]
+) -> tuple[float, int]:
+    if len(dataset.registros) < 10:
+        return 0.0, 0
+
+    registros = dataset.registros.copy()
+    Random(42).shuffle(registros)
+    tam_test = max(1, len(registros) // 5)
+    test = registros[:tam_test]
+    entrenamiento = dataset.crear_subconjunto(registros[tam_test:])
+
+    modelo = Regresor_kNN(k=k, distancia=distancia, pesos=pesos)
+    modelo.entrenar(entrenamiento)
+
+    error_total = 0.0
+    for registro in test:
+        pred = modelo.predecir(registro)
+        error_total += abs(pred - float(registro.objetivo))
+
+    return error_total / len(test), len(test)
 
 
 def extraer_cabeceras_wine(ruta_wine_names: Path) -> list[str]:
@@ -109,39 +174,87 @@ def probar_dataset(dataset: DataSet) -> None:
     print(f"  subconjunto creado con {len(subconjunto.registros)} registros")
 
 
-def probar_clasificador(nombre: str, dataset) -> None:
+def probar_clasificador(
+    nombre: str,
+    dataset: DataSetClasificacion,
+    objetivo: str,
+    mapa_etiquetas: dict[str, str] | None = None,
+) -> None:
     if len(dataset.registros) < 6:
         print(f"\n[{nombre}] no hay suficientes registros para clasificar.")
         return
 
+    k = 5
+    distancia = "manhattan"
     entrenamiento = dataset.crear_subconjunto(dataset.registros[1:])
     consulta = dataset.registros[0]
 
-    modelo = Clasificador_kNN(k=5, distancia="manhattan")
+    modelo = Clasificador_kNN(k=k, distancia=distancia)
     modelo.entrenar(entrenamiento)
     prediccion = modelo.predecir(consulta)
 
+    indices_vecinos = consulta.k_vecinos(entrenamiento.registros, k=k, tipo=distancia)
+    etiquetas_vecinas = [entrenamiento.registros[i].objetivo for i in indices_vecinos]
+    votos = Counter(etiquetas_vecinas)
+    acierto = prediccion == consulta.objetivo
+
+    def texto_etiqueta(etiqueta: str) -> str:
+        if mapa_etiquetas and etiqueta in mapa_etiquetas:
+            return f"{etiqueta} ({mapa_etiquetas[etiqueta]})"
+        return str(etiqueta)
+
+    accuracy, total_test = evaluar_clasificador_holdout(dataset, k=k, distancia=distancia)
+
     print(f"\n[Clasificador kNN - {nombre}]")
-    print(f"  objetivo real: {consulta.objetivo}")
-    print(f"  prediccion: {prediccion}")
+    print(f"  Se esta prediciendo: {objetivo}")
+    imprimir_contexto_registro(dataset, limite=4)
+    print(f"  Configuracion: k={k}, distancia={distancia}")
+    print(f"  Votos de los vecinos: {dict(votos)}")
+    print(f"  Objetivo real: {texto_etiqueta(str(consulta.objetivo))}")
+    print(f"  Prediccion: {texto_etiqueta(str(prediccion))}")
+    print(f"  Resultado del caso: {'ACIERTO' if acierto else 'FALLO'}")
+    if total_test:
+        print(f"  Accuracy hold-out (20%, {total_test} casos): {accuracy:.2%}")
 
 
-def probar_regresor(nombre: str, dataset) -> None:
+def probar_regresor(
+    nombre: str,
+    dataset: DataSetRegresion,
+    objetivo: str,
+    unidad: str = "",
+) -> None:
     if len(dataset.registros) < 6:
         print(f"\n[{nombre}] no hay suficientes registros para regresion.")
         return
 
+    k = 5
+    distancia = "ponderada"
     entrenamiento = dataset.crear_subconjunto(dataset.registros[1:])
     consulta = dataset.registros[0]
     pesos = [1.0] * len(consulta.datos)
 
-    modelo = Regresor_kNN(k=5, distancia="ponderada", pesos=pesos)
+    modelo = Regresor_kNN(k=k, distancia=distancia, pesos=pesos)
     modelo.entrenar(entrenamiento)
     prediccion = modelo.predecir(consulta)
 
+    indices_vecinos = consulta.k_vecinos(entrenamiento.registros, k=k, tipo=distancia, pesos=pesos)
+    valores_vecinos = [float(entrenamiento.registros[i].objetivo) for i in indices_vecinos]
+    valor_real = float(consulta.objetivo)
+    error_abs = abs(prediccion - valor_real)
+    mae, total_test = evaluar_regresor_holdout(dataset, k=k, distancia=distancia, pesos=pesos)
+
+    sufijo_unidad = f" {unidad}" if unidad else ""
+
     print(f"\n[Regresor kNN - {nombre}]")
-    print(f"  objetivo real: {consulta.objetivo:.4f}")
-    print(f"  prediccion: {prediccion:.4f}")
+    print(f"  Se esta prediciendo: {objetivo}")
+    imprimir_contexto_registro(dataset, limite=4)
+    print(f"  Configuracion: k={k}, distancia={distancia}")
+    print(f"  Objetivos de vecinos usados: {[round(v, 4) for v in valores_vecinos]}")
+    print(f"  Valor real: {valor_real:.4f}{sufijo_unidad}")
+    print(f"  Prediccion: {prediccion:.4f}{sufijo_unidad}")
+    print(f"  Error absoluto: {error_abs:.4f}{sufijo_unidad}")
+    if total_test:
+        print(f"  MAE hold-out (20%, {total_test} casos): {mae:.4f}{sufijo_unidad}")
 
 
 def main() -> None:
@@ -178,12 +291,30 @@ def main() -> None:
     probar_registro(dataset_diabetes)
     probar_dataset(dataset_diabetes)
 
-    probar_clasificador("Diabetes", dataset_diabetes)
-    probar_clasificador("Wine", dataset_wine)
+    probar_clasificador(
+        "Diabetes",
+        dataset_diabetes,
+        objetivo="Outcome (1 = diabetes, 0 = no diabetes)",
+        mapa_etiquetas={"0": "No diabetes", "1": "Diabetes"},
+    )
+    probar_clasificador(
+        "Wine",
+        dataset_wine,
+        objetivo="Clase de vino (1, 2 o 3)",
+    )
     if dataset_iris is not None:
-        probar_clasificador("Iris", dataset_iris)
+        probar_clasificador(
+            "Iris",
+            dataset_iris,
+            objetivo="Especie de flor (setosa, versicolor o virginica)",
+        )
 
-    probar_regresor("BostonHousing", dataset_boston)
+    probar_regresor(
+        "BostonHousing",
+        dataset_boston,
+        objetivo="MEDV: valor mediano de vivienda",
+        unidad="(miles de USD)",
+    )
 
 
 if __name__ == "__main__":
