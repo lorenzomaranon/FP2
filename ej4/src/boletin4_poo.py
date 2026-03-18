@@ -80,6 +80,56 @@ class ResultadoEficienciaGol:
     minutos_por_gol: float
 
 
+@dataclass(frozen=True)
+class ResultadoJugadorDecadas:
+    jugador: str
+    decadas: list[int]
+
+
+@dataclass(frozen=True)
+class ResultadoTemporadaEquipos:
+    temporada: str
+    num_equipos: int
+    equipos: list[str]
+
+
+@dataclass(frozen=True)
+class ResultadoEquipoValor:
+    equipo: str
+    valor: int
+
+
+@dataclass(frozen=True)
+class ResultadoTemporadaMediaGoles:
+    temporada: str
+    goles: int
+    partidos: int
+    media_goles: float
+
+
+@dataclass(frozen=True)
+class ResultadoEquiposCompartidos:
+    equipo_1: str
+    equipo_2: str
+    num_jugadores: int
+    ejemplos: list[str]
+
+
+@dataclass(frozen=True)
+class ResultadoPromedioMinutos:
+    jugador: str
+    temporadas: int
+    minutos_totales: int
+    promedio_minutos: float
+
+
+@dataclass(frozen=True)
+class ResultadoRegresoEquipo:
+    jugador: str
+    equipo: str
+    anios_fuera: int
+
+
 class RepositorioPlantillas:
     COLUMNAS_ESPERADAS = {
         "TEMPORADA",
@@ -159,6 +209,61 @@ class AnalizadorBoletin4:
             .sort_values(["partidos", "anio_min", "EQUIPO"], ascending=[False, True, True])
         )
         return equipos["EQUIPO"].tolist()
+
+    @staticmethod
+    def _temporadas_ordenadas(tabla: pd.DataFrame) -> list[str]:
+        temporadas = tabla["TEMPORADA"].astype(str).unique().tolist()
+        return sorted(temporadas, key=lambda temporada: int(temporada[:4]))
+
+    @staticmethod
+    def _primera_aparicion_equipo(tabla: pd.DataFrame) -> pd.Series:
+        return tabla.reset_index().groupby("EQUIPO")["index"].min()
+
+    @staticmethod
+    def _racha_consecutiva_detallada(anios: list[int]) -> tuple[int, int]:
+        if not anios:
+            return 0, 0
+
+        anios_ordenados = sorted(set(anios))
+        mejor_longitud = 1
+        mejor_inicio = anios_ordenados[0]
+        longitud_actual = 1
+        inicio_actual = anios_ordenados[0]
+
+        for indice in range(1, len(anios_ordenados)):
+            anio = anios_ordenados[indice]
+            anio_previo = anios_ordenados[indice - 1]
+
+            if anio == anio_previo + 1:
+                longitud_actual += 1
+            else:
+                longitud_actual = 1
+                inicio_actual = anio
+
+            if longitud_actual > mejor_longitud:
+                mejor_longitud = longitud_actual
+                mejor_inicio = inicio_actual
+            elif longitud_actual == mejor_longitud and inicio_actual < mejor_inicio:
+                mejor_inicio = inicio_actual
+
+        return mejor_longitud, mejor_inicio
+
+    def _transiciones_temporada(self) -> list[tuple[str, str, list[str], list[str]]]:
+        temporadas = self._temporadas_ordenadas(self.tabla)
+        equipos_por_temporada = {
+            temporada: set(self.tabla[self.tabla["TEMPORADA"] == temporada]["EQUIPO"].unique())
+            for temporada in temporadas
+        }
+
+        transiciones: list[tuple[str, str, list[str], list[str]]] = []
+        for temporada_actual, temporada_siguiente in zip(temporadas, temporadas[1:]):
+            equipos_actual = equipos_por_temporada[temporada_actual]
+            equipos_siguiente = equipos_por_temporada[temporada_siguiente]
+            descendidos = sorted(equipos_actual - equipos_siguiente)
+            ascendidos = sorted(equipos_siguiente - equipos_actual)
+            transiciones.append((temporada_actual, temporada_siguiente, descendidos, ascendidos))
+
+        return transiciones
 
     def ejercicio_1(self) -> ResultadoJugadorTemporada:
         fila = self.tabla.loc[self.tabla["GOLES"].idxmax()]
@@ -436,3 +541,304 @@ class AnalizadorBoletin4:
             )
             for _, row in ranking.iterrows()
         ]
+
+    def ejercicio_17(self, top_n: int = 3) -> list[ResultadoJugadorValor]:
+        ranking = (
+            self.tabla.groupby("JUGADOR", as_index=False)
+            .agg(partidos=("PJUGADOS", "sum"), goles=("GOLES", "sum"))
+            .query("goles == 0")
+            .sort_values(["partidos", "JUGADOR"], ascending=[False, True])
+            .head(top_n)
+        )
+
+        return [
+            ResultadoJugadorValor(jugador=str(row["JUGADOR"]), valor=int(row["partidos"]))
+            for _, row in ranking.iterrows()
+        ]
+
+    def ejercicio_18(self, top_n: int = 5) -> list[ResultadoJugadorDecadas]:
+        con_goles = self.tabla[self.tabla["GOLES"] > 0].copy()
+        con_goles["DECADE"] = (con_goles["ANIO_INICIO"] // 10) * 10
+        primera_aparicion = con_goles.reset_index().groupby("JUGADOR")["index"].min()
+        decadas_por_jugador = con_goles.groupby("JUGADOR")["DECADE"].apply(
+            lambda serie: sorted({int(valor) for valor in serie.tolist()})
+        )
+
+        filas: list[tuple[str, list[int], int]] = []
+        for jugador, decadas in decadas_por_jugador.items():
+            filas.append((str(jugador), decadas, int(primera_aparicion.loc[jugador])))
+
+        ranking = sorted(filas, key=lambda fila: (-len(fila[1]), fila[2], fila[0]))[:top_n]
+        return [ResultadoJugadorDecadas(jugador=fila[0], decadas=fila[1]) for fila in ranking]
+
+    def ejercicio_19(self, min_descensos: int = 4) -> list[ResultadoTemporadaEquipos]:
+        resultados: list[ResultadoTemporadaEquipos] = []
+        for temporada, _, descendidos, _ in self._transiciones_temporada():
+            if len(descendidos) >= min_descensos:
+                resultados.append(
+                    ResultadoTemporadaEquipos(
+                        temporada=temporada,
+                        num_equipos=len(descendidos),
+                        equipos=descendidos,
+                    )
+                )
+        return resultados
+
+    def ejercicio_20(self, top_n: int = 3) -> list[ResultadoEquipoValor]:
+        descensos_por_equipo: dict[str, int] = defaultdict(int)
+        primer_descenso: dict[str, int] = {}
+
+        for temporada, _, descendidos, _ in self._transiciones_temporada():
+            anio = int(temporada[:4])
+            for equipo in descendidos:
+                descensos_por_equipo[equipo] += 1
+                if equipo not in primer_descenso:
+                    primer_descenso[equipo] = anio
+
+        ranking = sorted(
+            descensos_por_equipo.items(),
+            key=lambda item: (-item[1], primer_descenso[item[0]], item[0]),
+        )[:top_n]
+
+        return [ResultadoEquipoValor(equipo=equipo, valor=int(valor)) for equipo, valor in ranking]
+
+    def ejercicio_21(self, min_ascensos: int = 4) -> list[ResultadoTemporadaEquipos]:
+        resultados: list[ResultadoTemporadaEquipos] = []
+        for _, temporada, _, ascendidos in self._transiciones_temporada():
+            if len(ascendidos) >= min_ascensos:
+                resultados.append(
+                    ResultadoTemporadaEquipos(
+                        temporada=temporada,
+                        num_equipos=len(ascendidos),
+                        equipos=ascendidos,
+                    )
+                )
+        return resultados
+
+    def ejercicio_22(self, top_n: int = 1) -> list[ResultadoEquipoValor]:
+        ascensos_por_equipo: dict[str, int] = defaultdict(int)
+        primer_ascenso: dict[str, int] = {}
+
+        for _, temporada, _, ascendidos in self._transiciones_temporada():
+            anio = int(temporada[:4])
+            for equipo in ascendidos:
+                ascensos_por_equipo[equipo] += 1
+                if equipo not in primer_ascenso:
+                    primer_ascenso[equipo] = anio
+
+        ranking = sorted(
+            ascensos_por_equipo.items(),
+            key=lambda item: (-item[1], primer_ascenso[item[0]], item[0]),
+        )[:top_n]
+
+        return [ResultadoEquipoValor(equipo=equipo, valor=int(valor)) for equipo, valor in ranking]
+
+    def ejercicio_23(self, top_n: int = 10) -> list[ResultadoEquipoValor]:
+        primera_aparicion = self._primera_aparicion_equipo(self.tabla).rename("first_idx")
+        ranking = (
+            self.tabla.groupby("EQUIPO", as_index=False)
+            .agg(temporadas=("TEMPORADA", "nunique"))
+            .merge(primera_aparicion, on="EQUIPO", how="left")
+            .sort_values(["temporadas", "first_idx", "EQUIPO"], ascending=[False, True, True])
+            .head(top_n)
+        )
+
+        return [
+            ResultadoEquipoValor(equipo=str(row["EQUIPO"]), valor=int(row["temporadas"]))
+            for _, row in ranking.iterrows()
+        ]
+
+    def ejercicio_24(self, top_n: int = 10) -> list[ResultadoEquipoValor]:
+        primera_aparicion = self._primera_aparicion_equipo(self.tabla).rename("first_idx")
+        ranking = (
+            self.tabla.groupby("EQUIPO", as_index=False)
+            .agg(temporadas=("TEMPORADA", "nunique"))
+            .merge(primera_aparicion, on="EQUIPO", how="left")
+            .sort_values(["temporadas", "first_idx", "EQUIPO"], ascending=[True, True, True])
+            .head(top_n)
+        )
+
+        return [
+            ResultadoEquipoValor(equipo=str(row["EQUIPO"]), valor=int(row["temporadas"]))
+            for _, row in ranking.iterrows()
+        ]
+
+    def ejercicio_25(self, top_n: int = 10) -> list[ResultadoEquipoValor]:
+        primera_aparicion = self._primera_aparicion_equipo(self.tabla).rename("first_idx")
+        ranking = (
+            self.tabla.groupby("EQUIPO", as_index=False)
+            .agg(goles=("GOLES", "sum"))
+            .merge(primera_aparicion, on="EQUIPO", how="left")
+            .sort_values(["goles", "first_idx", "EQUIPO"], ascending=[False, True, True])
+            .head(top_n)
+        )
+
+        return [
+            ResultadoEquipoValor(equipo=str(row["EQUIPO"]), valor=int(row["goles"]))
+            for _, row in ranking.iterrows()
+        ]
+
+    def ejercicio_26(self, top_n: int = 10) -> list[ResultadoEquipoValor]:
+        primera_aparicion = self._primera_aparicion_equipo(self.tabla).rename("first_idx")
+        ranking_baja = (
+            self.tabla.groupby("EQUIPO", as_index=False)
+            .agg(goles=("GOLES", "sum"))
+            .merge(primera_aparicion, on="EQUIPO", how="left")
+            .sort_values(["goles", "first_idx", "EQUIPO"], ascending=[True, True, True])
+            .head(top_n)
+        )
+        ranking_baja = ranking_baja.sort_values(
+            ["goles", "first_idx", "EQUIPO"], ascending=[False, True, True]
+        )
+
+        return [
+            ResultadoEquipoValor(equipo=str(row["EQUIPO"]), valor=int(row["goles"]))
+            for _, row in ranking_baja.iterrows()
+        ]
+
+    def ejercicio_27(self, min_media: float = 4.0) -> list[ResultadoTemporadaMediaGoles]:
+        ranking = (
+            self.tabla.groupby("TEMPORADA", as_index=False)
+            .agg(goles=("GOLES", "sum"), equipos=("EQUIPO", "nunique"))
+            .sort_values(["TEMPORADA"], ascending=[True])
+        )
+        ranking["partidos"] = ranking["equipos"] * (ranking["equipos"] - 1)
+        ranking["media"] = ranking["goles"] / ranking["partidos"]
+        ranking = ranking[ranking["media"] >= min_media]
+
+        return [
+            ResultadoTemporadaMediaGoles(
+                temporada=str(row["TEMPORADA"]),
+                goles=int(row["goles"]),
+                partidos=int(row["partidos"]),
+                media_goles=float(row["media"]),
+            )
+            for _, row in ranking.iterrows()
+        ]
+
+    def ejercicio_28(self) -> list[ResultadoTemporadaEquipos]:
+        ranking = (
+            self.tabla.reset_index()
+            .groupby(["TEMPORADA", "EQUIPO"], as_index=False)
+            .agg(goles=("GOLES", "sum"), first_idx=("index", "min"))
+        )
+
+        resultados: list[ResultadoTemporadaEquipos] = []
+        for temporada, subset in ranking.groupby("TEMPORADA", sort=True):
+            maximo = subset["goles"].max()
+            equipos = (
+                subset[subset["goles"] == maximo]
+                .sort_values(["first_idx", "EQUIPO"], ascending=[True, True])["EQUIPO"]
+                .tolist()
+            )
+            if len(equipos) > 1:
+                resultados.append(
+                    ResultadoTemporadaEquipos(
+                        temporada=str(temporada),
+                        num_equipos=len(equipos),
+                        equipos=[str(equipo) for equipo in equipos],
+                    )
+                )
+        return resultados
+
+    def ejercicio_29(self, top_n: int = 3) -> list[ResultadoEquipoValor]:
+        ranking = (
+            self.tabla.groupby(["TEMPORADA", "EQUIPO"], as_index=False)
+            .agg(goles=("GOLES", "sum"))
+        )
+        ranking["ANIO_INICIO"] = ranking["TEMPORADA"].str.slice(0, 4).astype(int)
+
+        temporadas_top_por_equipo: dict[str, list[int]] = defaultdict(list)
+        for _, subset in ranking.groupby("TEMPORADA", sort=True):
+            maximo = subset["goles"].max()
+            for _, fila in subset[subset["goles"] == maximo].iterrows():
+                temporadas_top_por_equipo[str(fila["EQUIPO"])].append(int(fila["ANIO_INICIO"]))
+
+        filas: list[tuple[str, int, int]] = []
+        for equipo, anios in temporadas_top_por_equipo.items():
+            racha = self._racha_consecutiva_maxima(sorted(set(anios)))
+            temporadas_como_top = len(set(anios))
+            filas.append((equipo, racha, temporadas_como_top))
+
+        filas = sorted(filas, key=lambda fila: (-fila[1], -fila[2], fila[0]))[:top_n]
+        return [ResultadoEquipoValor(equipo=equipo, valor=racha) for equipo, racha, _ in filas]
+
+    def ejercicio_30(
+        self,
+        equipo_1: str = "Sevilla F.C.",
+        equipo_2: str = "Real Betis B. S.",
+        ejemplos_n: int = 5,
+    ) -> ResultadoEquiposCompartidos:
+        jugadores_1 = set(self.tabla[self.tabla["EQUIPO"] == equipo_1]["JUGADOR"].unique())
+        jugadores_2 = set(self.tabla[self.tabla["EQUIPO"] == equipo_2]["JUGADOR"].unique())
+        compartidos = sorted(jugadores_1.intersection(jugadores_2))
+        return ResultadoEquiposCompartidos(
+            equipo_1=equipo_1,
+            equipo_2=equipo_2,
+            num_jugadores=len(compartidos),
+            ejemplos=[str(nombre) for nombre in compartidos[:ejemplos_n]],
+        )
+
+    def ejercicio_31(self, top_n: int = 5, temporadas_objetivo: int = 8) -> list[ResultadoPromedioMinutos]:
+        ranking = (
+            self.tabla.groupby("JUGADOR", as_index=False)
+            .agg(temporadas=("TEMPORADA", "nunique"), minutos_totales=("MINUTOS", "sum"))
+            .query("temporadas == @temporadas_objetivo")
+        )
+        ranking["promedio"] = ranking["minutos_totales"] / ranking["temporadas"]
+        ranking = ranking.sort_values(["promedio", "JUGADOR"], ascending=[True, True]).head(top_n)
+
+        return [
+            ResultadoPromedioMinutos(
+                jugador=str(row["JUGADOR"]),
+                temporadas=int(row["temporadas"]),
+                minutos_totales=int(row["minutos_totales"]),
+                promedio_minutos=float(row["promedio"]),
+            )
+            for _, row in ranking.iterrows()
+        ]
+
+    def ejercicio_32(self, top_n: int = 5) -> list[ResultadoRegresoEquipo]:
+        filas: list[tuple[str, str, int, int]] = []
+
+        for (jugador, equipo), subset in self.tabla.groupby(["JUGADOR", "EQUIPO"]):
+            anios = sorted({int(valor) for valor in subset["ANIO_INICIO"].tolist()})
+            if len(anios) < 2:
+                continue
+
+            mejor_gap = 0
+            inicio_gap = anios[0]
+            for previo, siguiente in zip(anios, anios[1:]):
+                gap = siguiente - previo
+                if gap > mejor_gap:
+                    mejor_gap = gap
+                    inicio_gap = previo
+                elif gap == mejor_gap and previo < inicio_gap:
+                    inicio_gap = previo
+
+            if mejor_gap > 1:
+                filas.append((str(jugador), str(equipo), int(mejor_gap), int(inicio_gap)))
+
+        filas = sorted(filas, key=lambda fila: (-fila[2], fila[3], fila[0], fila[1]))[:top_n]
+        return [
+            ResultadoRegresoEquipo(jugador=jugador, equipo=equipo, anios_fuera=anios_fuera)
+            for jugador, equipo, anios_fuera, _ in filas
+        ]
+
+    def ejercicio_33(self, top_n: int = 3) -> list[ResultadoJugadorValor]:
+        moderna = self.tabla[self.tabla["ANIO_INICIO"] >= 1980]
+        ranking = (
+            moderna.groupby(["JUGADOR", "ANIO_INICIO"], as_index=False)
+            .agg(tarjetas=("TARJETAS", "sum"), expulsiones=("EXPULSIONES", "sum"))
+        )
+        ranking["limpio"] = (ranking["tarjetas"] == 0) & (ranking["expulsiones"] == 0)
+
+        filas: list[tuple[str, int, int]] = []
+        for jugador, subset in ranking.groupby("JUGADOR"):
+            anios_limpios = subset[subset["limpio"]]["ANIO_INICIO"].astype(int).tolist()
+            racha, inicio = self._racha_consecutiva_detallada(anios_limpios)
+            if racha > 0:
+                filas.append((str(jugador), int(racha), int(inicio)))
+
+        filas = sorted(filas, key=lambda fila: (-fila[1], fila[2], fila[0]))[:top_n]
+        return [ResultadoJugadorValor(jugador=jugador, valor=racha) for jugador, racha, _ in filas]

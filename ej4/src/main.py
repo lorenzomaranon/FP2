@@ -68,7 +68,90 @@ def main() -> None:
     for item in analizador.ejercicio_16():
         print(f"- {item.jugador}: {item.goles} goles. Marca un gol cada {item.minutos_por_gol:.1f} minutos")
 
+    print("Ejercicio 17:")
+    for item in analizador.ejercicio_17():
+        print(f"- {item.jugador}: {int(item.valor)} partidos enteros sin celebrar un gol")
+
+    print("Ejercicio 18:")
+    for item in analizador.ejercicio_18():
+        decadas = ", ".join(str(decada) for decada in item.decadas)
+        print(f"- {item.jugador}: Goles en {len(item.decadas)} decadas distintas ({decadas})")
+
+    print("Ejercicio 19:")
+    for item in analizador.ejercicio_19():
+        print(
+            f"- Temporada {item.temporada}: Descendieron {item.num_equipos} equipos: "
+            f"{', '.join(item.equipos)}"
+        )
+
+    print("Ejercicio 20:")
+    for item in analizador.ejercicio_20():
+        print(f"- {item.equipo}: {item.valor} descensos")
+
+    print("Ejercicio 21:")
+    for item in analizador.ejercicio_21():
+        print(
+            f"- Temporada {item.temporada}: Ascendieron {item.num_equipos} equipos: "
+            f"{', '.join(item.equipos)}"
+        )
+
+    print("Ejercicio 22:")
+    for item in analizador.ejercicio_22():
+        print(f"- {item.equipo}: {item.valor} ascensos")
+
+    print("Ejercicio 23:")
+    for item in analizador.ejercicio_23():
+        print(f"- {item.equipo}: {item.valor} temporadas")
+
+    print("Ejercicio 24:")
+    for item in analizador.ejercicio_24():
+        print(f"- {item.equipo}: {item.valor} temporadas")
+
+    print("Ejercicio 25:")
+    for item in analizador.ejercicio_25():
+        print(f"- {item.equipo}: {item.valor} goles")
+
+    print("Ejercicio 26:")
+    for item in analizador.ejercicio_26():
+        print(f"- {item.equipo}: {item.valor} goles")
+
+    print("Ejercicio 27:")
+    for item in analizador.ejercicio_27():
+        print(
+            f"- Temporada {item.temporada}: {item.goles} goles en {item.partidos} partidos. "
+            f"Media: {item.media_goles:.2f} goles/partido"
+        )
+
+    print("Ejercicio 28:")
+    for item in analizador.ejercicio_28():
+        print(f"- Temporada {item.temporada}: Maximo goleador fue {', '.join(item.equipos)}")
+
+    print("Ejercicio 29:")
+    for item in analizador.ejercicio_29():
+        print(f"- {item.equipo}: Racha de {item.valor} temporadas consecutivas siendo el maximo goleador")
+
+    print("Ejercicio 30:")
+    item = analizador.ejercicio_30()
+    print(
+        f"- {item.equipo_1} vs {item.equipo_2}: {item.num_jugadores} jugadores. "
+        f"Ejemplos: {', '.join(item.ejemplos)}"
+    )
+
+    print("Ejercicio 31:")
+    for item in analizador.ejercicio_31():
+        print(
+            f"- {item.jugador}: Promedio de {item.promedio_minutos:.1f} minutos por temporada "
+            f"(Total: {item.minutos_totales} minutos en {item.temporadas} temporadas)"
+        )
+
+    print("Ejercicio 32:")
+    for item in analizador.ejercicio_32():
+        print(f"- {item.jugador} - Equipo: {item.equipo}, Anos fuera: {item.anios_fuera}")
+
+    print("Ejercicio 33:")
+    for item in analizador.ejercicio_33():
+        print(f"- {item.jugador}: Racha de {int(item.valor)} temporadas consecutivas")
+
 
 if __name__ == "__main__":
     main()
-
