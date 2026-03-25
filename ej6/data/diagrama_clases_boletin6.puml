@@ -1,0 +1,151 @@
+@startuml
+title Boletin 6 - Diagrama de clases (Elecciones Generales 2023)
+
+skinparam classAttributeIconSize 0
+hide empty members
+
+enum NivelTerritorial {
+  CIRCUNSCRIPCION
+  CCAA
+  NACIONAL
+}
+
+class Partido {
+  -id: str
+  -siglas: str
+  -nombre: str
+}
+
+class ResultadoPartidoCircunscripcion {
+  -partido: Partido
+  -votos: int
+  -escanos_oficiales: int
+  -escanos_dhondt: int
+}
+
+class Circunscripcion {
+  -codigo: str
+  -nombre: str
+  -poblacion_total: int
+  -censo_total: int
+  -votantes: int
+  -votantes_cera: int
+  -votos_blanco: int
+  -votos_nulos: int
+  -votos_candidaturas: int
+  -diputados: int
+  -resultados_partido: dict<Partido, ResultadoPartidoCircunscripcion>
+  +porcentaje_participacion(): float
+  +porcentaje_nulos(): float
+  +porcentaje_blanco(): float
+}
+
+class ComunidadAutonoma {
+  -codigo: str
+  -nombre: str
+  -circunscripciones: list<Circunscripcion>
+  +totales_votos(): int
+  +totales_cera(): int
+  +total_diputados(): int
+}
+
+class EleccionGeneral {
+  -anio: int
+  -comunidades: dict<str, ComunidadAutonoma>
+  -partidos: dict<str, Partido>
+  +total_diputados_nacional(): int
+  +agregar_comunidad(ccaa: ComunidadAutonoma): void
+  +agregar_partido(partido: Partido): void
+}
+
+class FactoriaEleccion {
+  +desde_excel(ruta_excel: Path): EleccionGeneral
+}
+
+class ValidadorCoherencia {
+  +validar(eleccion: EleccionGeneral): void
+}
+
+class ValidacionDatosError {
+  -errores: list<str>
+}
+
+class RepartidorDhondt {
+  +repartir(circunscripcion: Circunscripcion): dict<Partido, int>
+}
+
+class ValidadorEscanosOficiales {
+  +comprobar(eleccion: EleccionGeneral): list<str>
+}
+
+class AnalizadorParticipacion {
+  +circunscripciones_mayor_nulos_blanco(eleccion: EleccionGeneral, top_n: int): list<Circunscripcion>
+  +ccaa_mayor_nulos_blanco(eleccion: EleccionGeneral, top_n: int): list<ComunidadAutonoma>
+  +circunscripciones_mayor_cera(eleccion: EleccionGeneral, top_n: int): list<Circunscripcion>
+  +ccaa_mayor_cera(eleccion: EleccionGeneral, top_n: int): list<ComunidadAutonoma>
+  +ccaa_mayor_ratio_cera_poblacion(eleccion: EleccionGeneral, top_n: int): list<ComunidadAutonoma>
+}
+
+class AnalizadorPartidos {
+  +partidos_en_exactamente_n_circunscripciones(eleccion: EleccionGeneral, n: int): list<Partido>
+  +partido_mas_votado_sin_escano(eleccion: EleccionGeneral): ResultadoPartidoCircunscripcion
+  +n_parejas_partido_circunscripcion_menos_votos_positivos(eleccion: EleccionGeneral, n: int): list<ResultadoPartidoCircunscripcion>
+}
+
+class AnalizadorEscanos {
+  +ultimo_escano_y_segundo_por_circunscripcion(eleccion: EleccionGeneral): list<ResultadoUltimoEscano>
+  +partidos_escanos_mas_baratos_nacional(eleccion: EleccionGeneral, top_n: int): list<ResultadoVotosPorEscano>
+  +partidos_escanos_mas_caros_nacional(eleccion: EleccionGeneral, top_n: int): list<ResultadoVotosPorEscano>
+  +partidos_escanos_mas_baratos_por_circunscripcion(eleccion: EleccionGeneral): dict<Circunscripcion, ResultadoVotosPorEscano>
+  +partidos_escanos_mas_caros_por_circunscripcion(eleccion: EleccionGeneral): dict<Circunscripcion, ResultadoVotosPorEscano>
+  +circunscripciones_con_menos_votos_por_diputado(eleccion: EleccionGeneral, top_n: int): list<Circunscripcion>
+}
+
+class Pactometro {
+  +combinaciones_minimo_diputados(eleccion: EleccionGeneral, n: int): list<list<Partido>>
+}
+
+class VisualizadorResultados {
+  +graficar_votos(eleccion: EleccionGeneral, nivel: NivelTerritorial): void
+  +graficar_escanos(eleccion: EleccionGeneral, nivel: NivelTerritorial): void
+  +graficar_barras(eleccion: EleccionGeneral, nivel: NivelTerritorial): void
+  +graficar_sectores(eleccion: EleccionGeneral, nivel: NivelTerritorial): void
+}
+
+class ResultadoUltimoEscano {
+  -circunscripcion: str
+  -partido_ultimo_escano: Partido
+  -partido_casi_gana: Partido
+  -votos_que_faltaron: int
+}
+
+class ResultadoVotosPorEscano {
+  -ambito: str
+  -partido: Partido
+  -votos_totales: int
+  -escanos_totales: int
+  -votos_por_escano: float
+}
+
+ValidacionDatosError --|> ValueError
+EleccionGeneral "1" o-- "*" ComunidadAutonoma
+EleccionGeneral "1" o-- "*" Partido
+ComunidadAutonoma "1" o-- "*" Circunscripcion
+Circunscripcion "1" o-- "*" ResultadoPartidoCircunscripcion
+ResultadoPartidoCircunscripcion "*" --> "1" Partido
+
+FactoriaEleccion ..> EleccionGeneral
+ValidadorCoherencia ..> EleccionGeneral
+ValidadorCoherencia ..> ValidacionDatosError
+RepartidorDhondt ..> Circunscripcion
+ValidadorEscanosOficiales ..> RepartidorDhondt
+ValidadorEscanosOficiales ..> EleccionGeneral
+AnalizadorParticipacion ..> EleccionGeneral
+AnalizadorPartidos ..> EleccionGeneral
+AnalizadorEscanos ..> EleccionGeneral
+AnalizadorEscanos ..> RepartidorDhondt
+Pactometro ..> EleccionGeneral
+VisualizadorResultados ..> EleccionGeneral
+VisualizadorResultados ..> NivelTerritorial
+
+@enduml
