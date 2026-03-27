@@ -114,7 +114,8 @@ def _obtener_ruta_primera_hoja(zf: zipfile.ZipFile) -> str:
             destino = relacion.attrib.get("Target", "")
             if not destino:
                 break
-            if not destino.startswith("/"):
+            destino = destino.lstrip("/")
+            if not destino.startswith("xl/"):
                 destino = f"xl/{destino}"
             return destino.replace("\\", "/")
     raise ValueError("No se pudo localizar el XML de la primera hoja del XLSX.")
@@ -226,6 +227,21 @@ def _obligatorio(fila: dict[str, str], campo: str, contexto: str) -> str:
 
 
 class FactoriaProyectos:
+    @classmethod
+    def cargar_habitantes_ccaa(cls, ruta_habitantes: str | Path) -> dict[str, int]:
+        ruta = Path(ruta_habitantes)
+        if not ruta.exists():
+            raise FileNotFoundError(f"No existe el fichero de habitantes: {ruta}")
+
+        filas = _leer_tabla(ruta)
+        habitantes_por_ccaa: dict[str, int] = {}
+        for indice, fila in enumerate(filas, start=2):
+            contexto = f"{ruta.name}:{indice}"
+            ccaa = _obligatorio(fila, "CCAA", contexto)
+            habitantes = _parse_entero(_obligatorio(fila, "HABITANTES", contexto))
+            habitantes_por_ccaa[ccaa] = habitantes
+        return habitantes_por_ccaa
+
     @classmethod
     def desde_carpeta_datos(
         cls, carpeta_datos: str | Path
