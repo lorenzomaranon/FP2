@@ -10,26 +10,28 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import matplotlib.pyplot as plt
+import funcion_8
 
 
 LOWER_BOUND = -10.0
 UPPER_BOUND = 10.0
 DIMENSIONS = 10
-TOTAL_BUDGET_PER_RUN = 10_000
+TOTAL_BUDGET_PER_RUN = 40_000 # Subimos a 40.000 como pide el lab
 GLOBAL_RANDOM_SEED = 1
 
 
 class GlobalBudgetEvaluator:
-    """
-    Encapsula una funcion objetivo y controla un presupuesto global de llamadas.
-    """
-
     def __init__(self, objective_function, lower_bound, upper_bound, max_evaluations):
         self.objective_function = objective_function
         self.lower_bound = float(lower_bound)
         self.upper_bound = float(upper_bound)
         self.max_evaluations = int(max_evaluations)
         self.used_evaluations = 0
+        
+        # Nuevas variables para el historico
+        self.current_best = float("inf")
+        self.history = []
 
     def can_evaluate(self):
         return self.used_evaluations < self.max_evaluations
@@ -52,9 +54,15 @@ class GlobalBudgetEvaluator:
             point_list.append(float(clipped_point[index]))
             index = index + 1
 
-        function_value = self.objective_function.evaluar(point_list)
+        function_value = float(self.objective_function.evaluar(point_list))
         self.used_evaluations = self.used_evaluations + 1
-        return float(function_value)
+        
+        # Actualizamos el historico para la grafica
+        if function_value < self.current_best:
+            self.current_best = function_value
+        self.history.append(self.current_best)
+        
+        return function_value
 
 
 class RunBudgetEvaluator:
@@ -258,14 +266,11 @@ def algorithm_random_search(
 def algorithm_hill_climbing(
     evaluator, random_generator, dimensions, lower_bound, upper_bound, parameters
 ):
-    initial_step = float(get_parameter(parameters, "initial_step", 1.5))
-    minimum_step = float(get_parameter(parameters, "minimum_step", 0.02))
-    shrink_factor = float(get_parameter(parameters, "shrink_factor", 0.6))
+    initial_step = float(get_parameter(parameters, "initial_step", (upper_bound - lower_bound) * 0.2))
+    minimum_step = float(get_parameter(parameters, "minimum_step", 0.01))
     neighbors_per_iteration = int(get_parameter(parameters, "neighbors_per_iteration", 30))
 
-    current_point = create_random_point(
-        random_generator, dimensions, lower_bound, upper_bound
-    )
+    current_point = create_random_point(random_generator, dimensions, lower_bound, upper_bound)
     current_value = evaluator.evaluate(current_point)
 
     if current_value is None:
@@ -273,20 +278,29 @@ def algorithm_hill_climbing(
 
     best_point = np.array(current_point, dtype=float)
     best_value = float(current_value)
-    step_size = initial_step
+    
+    # Obtenemos el presupuesto total disponible en este evaluador para calcular el progreso
+    total_local_budget = evaluator.remaining_evaluations()
 
     while evaluator.can_evaluate():
+        # PARAMETRIZACION DINAMICA: El paso depende del porcentaje de presupuesto consumido
+        evals_used = evaluator.evaluations_used()
+        if total_local_budget > 0:
+            progress = evals_used / float(total_local_budget)
+        else:
+            progress = 1.0
+            
+        step_size = initial_step * (1.0 - progress) + minimum_step * progress
+
         if step_size < minimum_step:
-            break
+            step_size = minimum_step
 
         best_neighbor_point = None
         best_neighbor_value = current_value
 
         neighbor_index = 0
         while neighbor_index < neighbors_per_iteration and evaluator.can_evaluate():
-            candidate = perturb_point_uniform(
-                current_point, random_generator, step_size, lower_bound, upper_bound
-            )
+            candidate = perturb_point_uniform(current_point, random_generator, step_size, lower_bound, upper_bound)
             candidate_value = evaluator.evaluate(candidate)
 
             if candidate_value is None:
@@ -298,16 +312,13 @@ def algorithm_hill_climbing(
 
             neighbor_index = neighbor_index + 1
 
-        if best_neighbor_point is None:
-            step_size = step_size * shrink_factor
-            continue
+        if best_neighbor_point is not None:
+            current_point = best_neighbor_point
+            current_value = best_neighbor_value
 
-        current_point = best_neighbor_point
-        current_value = best_neighbor_value
-
-        if current_value < best_value:
-            best_value = current_value
-            best_point = np.array(current_point, dtype=float)
+            if current_value < best_value:
+                best_value = current_value
+                best_point = np.array(current_point, dtype=float)
 
     return best_point, best_value
 
@@ -570,7 +581,151 @@ def algorithm_random_restart_hill_climbing(
 
     return best_point, best_value
 
+def algorithm_pso(
+    evaluator, random_generator, dimensions, lower_bound, upper_bound, parameters
+):
+    swarm_size = int(get_parameter(parameters, "swarm_size", 30))
+    inertia = float(get_parameter(parameters, "inertia", 0.7))
+    cognitive = float(get_parameter(parameters, "cognitive", 1.5))
+    social = float(get_parameter(parameters, "social", 1.5))
 
+    positions = []
+    velocities = []
+    pbest_pos = []
+    pbest_val = []
+
+    gbest_pos = np.zeros(dimensions, dtype=float)
+    gbest_val = float("inf")
+
+    # Inicializacion del enjambre
+    index = 0
+    while index < swarm_size:
+        pos = create_random_point(random_generator, dimensions, lower_bound, upper_bound)
+        vel_bound = abs(upper_bound - lower_bound) * 0.1
+        vel = create_random_point(random_generator, dimensions, -vel_bound, vel_bound)
+        
+        positions.append(pos)
+        velocities.append(vel)
+        pbest_pos.append(np.array(pos, dtype=float))
+        pbest_val.append(float("inf"))
+        index = index + 1
+
+    while evaluator.can_evaluate():
+        # Evaluacion y actualizacion de mejores posiciones
+        i = 0
+        while i < swarm_size and evaluator.can_evaluate():
+            val = evaluator.evaluate(positions[i])
+            if val is None:
+                break
+
+            if val < pbest_val[i]:
+                pbest_val[i] = val
+                pbest_pos[i] = np.array(positions[i], dtype=float)
+
+            if val < gbest_val:
+                gbest_val = val
+                gbest_pos = np.array(positions[i], dtype=float)
+
+            i = i + 1
+
+        # Actualizacion de velocidades y posiciones
+        i = 0
+        while i < swarm_size:
+            r1 = create_random_point(random_generator, dimensions, 0.0, 1.0)
+            r2 = create_random_point(random_generator, dimensions, 0.0, 1.0)
+
+            d = 0
+            while d < dimensions:
+                velocities[i][d] = (
+                    inertia * velocities[i][d]
+                    + cognitive * r1[d] * (pbest_pos[i][d] - positions[i][d])
+                    + social * r2[d] * (gbest_pos[d] - positions[i][d])
+                )
+                positions[i][d] = positions[i][d] + velocities[i][d]
+                d = d + 1
+
+            positions[i] = clip_point_to_bounds(positions[i], lower_bound, upper_bound)
+            i = i + 1
+
+    return gbest_pos, gbest_val
+
+
+def algorithm_differential_evolution(
+    evaluator, random_generator, dimensions, lower_bound, upper_bound, parameters
+):
+    pop_size = int(get_parameter(parameters, "pop_size", 40))
+    f_weight = float(get_parameter(parameters, "f_weight", 0.8))
+    cr_rate = float(get_parameter(parameters, "cr_rate", 0.7))
+
+    population = []
+    fitness = []
+
+    best_point = np.zeros(dimensions, dtype=float)
+    best_value = float("inf")
+
+    # Inicializacion
+    index = 0
+    while index < pop_size and evaluator.can_evaluate():
+        pos = create_random_point(random_generator, dimensions, lower_bound, upper_bound)
+        val = evaluator.evaluate(pos)
+        
+        if val is None:
+            break
+            
+        population.append(pos)
+        fitness.append(val)
+
+        if val < best_value:
+            best_value = val
+            best_point = np.array(pos, dtype=float)
+            
+        index = index + 1
+
+    while evaluator.can_evaluate():
+        i = 0
+        while i < len(population) and evaluator.can_evaluate():
+            # Seleccionar 3 indices distintos a 'i'
+            candidates = []
+            c_idx = 0
+            while c_idx < len(population):
+                if c_idx != i:
+                    candidates.append(c_idx)
+                c_idx = c_idx + 1
+            
+            chosen = random_generator.choice(candidates, 3, replace=False)
+            a = chosen[0]
+            b = chosen[1]
+            c = chosen[2]
+
+            # Mutacion y Crossover
+            trial = np.copy(population[i])
+            j_rand = random_generator.randint(0, dimensions)
+            
+            d = 0
+            while d < dimensions:
+                if random_generator.uniform(0.0, 1.0) < cr_rate or d == j_rand:
+                    mutant_d = population[a][d] + f_weight * (population[b][d] - population[c][d])
+                    trial[d] = mutant_d
+                d = d + 1
+
+            trial = clip_point_to_bounds(trial, lower_bound, upper_bound)
+            
+            # Seleccion
+            trial_val = evaluator.evaluate(trial)
+            if trial_val is None:
+                break
+
+            if trial_val <= fitness[i]:
+                population[i] = trial
+                fitness[i] = trial_val
+
+                if trial_val < best_value:
+                    best_value = trial_val
+                    best_point = np.array(trial, dtype=float)
+            
+            i = i + 1
+
+    return best_point, best_value
 def execute_algorithm_with_grid_search(
     algorithm_definition, function_name, function_instance, random_generator
 ):
@@ -733,6 +888,15 @@ def format_point(point):
 
     return "[" + ", ".join(values) + "]"
 
+def plot_optimization_progress(history, function_name, algorithm_name):
+    plt.figure(figsize=(10, 5))
+    plt.plot(history, color='blue', linewidth=2)
+    plt.title("Progreso de Optimización: " + algorithm_name + " en " + function_name)
+    plt.xlabel("Número de Evaluaciones")
+    plt.ylabel("Mejor Valor Encontrado")
+    plt.grid(True)
+    plt.yscale("log") # Escala logaritmica para ver mejor la caida
+    plt.show()
 
 def print_results(results):
     function_names = []
@@ -793,6 +957,7 @@ def print_results(results):
                 f"{rank:<5}{item.algorithm_name:<34}{item.best_value:>16.8f}"
                 f"{item.total_evaluations:>14}{item.tuning_evaluations:>14}{item.final_evaluations:>14}"
             )
+            print(f"     Mejor punto: {format_point(item.best_point)}")
             rank = rank + 1
             local_index = local_index + 1
 
@@ -976,6 +1141,52 @@ def build_algorithm_catalog():
         }
     )
 
+    # ... (código anterior de build_algorithm_catalog) ...Añadir algoritmos lab 8
+
+    algorithms.append(
+        {
+            "name": "Particle Swarm (PSO)",
+            "function": algorithm_pso,
+            "parameter_grid": {
+                "swarm_size": [20, 40],
+                "inertia": [0.5, 0.7],
+                "cognitive": [1.5, 2.0],
+                "social": [1.5, 2.0],
+            },
+            "default_parameters": {
+                "swarm_size": 30,
+                "inertia": 0.7,
+                "cognitive": 1.5,
+                "social": 1.5,
+            },
+            "tuning_fraction": 0.30,
+            "minimum_trial_budget": 500,
+            "minimum_final_budget": 3500,
+        }
+    )
+
+    algorithms.append(
+        {
+            "name": "Differential Evolution (DE)",
+            "function": algorithm_differential_evolution,
+            "parameter_grid": {
+                "pop_size": [30, 50],
+                "f_weight": [0.5, 0.8],
+                "cr_rate": [0.7, 0.9],
+            },
+            "default_parameters": {
+                "pop_size": 40,
+                "f_weight": 0.8,
+                "cr_rate": 0.7,
+            },
+            "tuning_fraction": 0.30,
+            "minimum_trial_budget": 500,
+            "minimum_final_budget": 3500,
+        }
+    )
+
+    return algorithms
+
     return algorithms
 
 
@@ -984,11 +1195,17 @@ def run_full_experiment():
     reto = load_retos_module()
     algorithms = build_algorithm_catalog()
 
+    # Cada elemento es: (Nombre, Instancia, Limite Inferior, Limite Superior)
     functions = [
-        ("Funcion_1", reto.Funcion_1),
-        ("Funcion_2", reto.Funcion_2),
-        ("Funcion_3", reto.Funcion_3),
-        ("Funcion_4", reto.Funcion_4),
+        ("Funcion_1", reto.Funcion_1(), LOWER_BOUND, UPPER_BOUND),
+        ("Funcion_2", reto.Funcion_2(), LOWER_BOUND, UPPER_BOUND),
+        ("Funcion_3", reto.Funcion_3(), LOWER_BOUND, UPPER_BOUND),
+        ("Funcion_4", reto.Funcion_4(), LOWER_BOUND, UPPER_BOUND),
+        ("Funcion_5", reto.Funcion_5(), LOWER_BOUND, UPPER_BOUND),
+        ("Funcion_6", reto.Funcion_6(), LOWER_BOUND, UPPER_BOUND),
+        ("Funcion_7", reto.Funcion_7(), LOWER_BOUND, UPPER_BOUND),
+        ("Funcion_8_Schwefel", funcion_8.Funcion_8(), -500.0, 500.0),
+        ("Funcion_8_Modificada", funcion_8.Funcion_8_modificada(), -500.0, 500.0)
     ]
 
     results = []
@@ -996,26 +1213,44 @@ def run_full_experiment():
     function_index = 0
     while function_index < len(functions):
         function_name = functions[function_index][0]
-        function_constructor = functions[function_index][1]
+        function_instance = functions[function_index][1]
+        f_lower_bound = functions[function_index][2]
+        f_upper_bound = functions[function_index][3]
 
         algorithm_index = 0
         while algorithm_index < len(algorithms):
             algorithm_definition = algorithms[algorithm_index]
-            run_seed = (
-                GLOBAL_RANDOM_SEED
-                + function_index * 100
-                + algorithm_index * 1000
-            )
+            run_seed = GLOBAL_RANDOM_SEED + function_index * 100 + algorithm_index * 1000
             random_generator = np.random.RandomState(run_seed)
-            function_instance = function_constructor()
 
-            result = execute_algorithm_with_grid_search(
-                algorithm_definition,
-                function_name,
-                function_instance,
-                random_generator,
+            # Usamos los limites especificos de la funcion
+            global_evaluator = GlobalBudgetEvaluator(
+                function_instance, f_lower_bound, f_upper_bound, TOTAL_BUDGET_PER_RUN
             )
+
+            # Ejecutamos sin Grid Search complejo para graficar limpiamente los 40.000 intentos
+            best_point, best_value = algorithm_definition["function"](
+                global_evaluator,
+                random_generator,
+                DIMENSIONS,
+                f_lower_bound,
+                f_upper_bound,
+                algorithm_definition["default_parameters"]
+            )
+
+            # Guardamos los resultados
+            result = ExperimentResult()
+            result.function_name = function_name
+            result.algorithm_name = algorithm_definition["name"]
+            result.best_point = best_point
+            result.best_value = best_value
+            result.total_evaluations = global_evaluator.evaluations_used()
+            result.selected_parameters = algorithm_definition["default_parameters"]
             results.append(result)
+
+            # Mostrar la grafica SOLO para el Hill Climbing Dinamico para no saturar de ventanas
+            if algorithm_definition["name"] == "Hill Climbing":
+                plot_optimization_progress(global_evaluator.history, function_name, algorithm_definition["name"])
 
             algorithm_index = algorithm_index + 1
         function_index = function_index + 1
