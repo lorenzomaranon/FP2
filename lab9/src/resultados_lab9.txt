@@ -1,0 +1,44 @@
+LABORATORIO 9 - PREDICCION DE SERIES TEMPORALES
+
+Criterio de seleccion del mejor modelo: MAE de validacion temporal interna
+Validacion interna: ultimas 24 horas del 28/12/2026
+Metrica entregable: MAE sobre FH=24 del 29/12/2026
+
+RECTA DE REGRESION
+  PH         Tasa  Min-Max  Z-Score      MAE val     MAE test
+  12        1e-07       No       No     9.136177    16.807851
+  24        1e-07       No       No     8.208969    13.816402
+  12         0.03       Si       No    10.566695    14.305248
+  24         0.03       Si       No    13.617067    12.093180
+  12         0.05       No       Si     6.730472    14.041879
+  24         0.05       No       Si    11.394828     8.826340
+
+Mejor recta segun validacion: PH=12, lr=0.05, normalizacion=zscore, MAE validacion=6.730472, MAE test=14.041879
+Mejor MAE test en recta: PH=24, lr=0.05, normalizacion=zscore, MAE test=8.826340
+
+KNN PONDERADO CON CORRELACION
+  PH    K      MAE val     MAE test
+   6    1    24.488048    21.460553
+   6    3     7.949903    24.942604
+   6    5    24.716741    21.023249
+  12    1    19.113766    21.460553
+  12    3    11.887737    22.220398
+  12    5    13.412669    18.774739
+  24    1     9.444774     6.418939
+  24    3    18.040901    20.264276
+  24    5    17.386522    19.523289
+  48    1     9.784558     6.418939
+  48    3     8.823274     6.231750
+  48    5     6.559181     6.845120
+
+Mejor kNN con correlacion segun validacion: PH=48, k=5, MAE validacion=6.559181, MAE test=6.845120
+Mejor MAE test en kNN con correlacion: PH=48, k=3, MAE test=6.231750
+
+KNN CON HEURISTICA
+  PH    K      MAE val     MAE test
+  48    1     7.457588     9.675892
+  48    3     5.783546     6.275080
+  48    5     5.777595     6.491298
+
+Mejor kNN con heuristica segun validacion: PH=48, k=5, MAE validacion=5.777595, MAE test=6.491298
+Mejor MAE test en kNN con heuristica: PH=48, k=3, MAE test=6.275080
