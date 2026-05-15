@@ -1,0 +1,40 @@
+LABORATORIO 10 - SERIES DE DIFERENCIAS
+
+Los MAE se calculan sobre la serie original reconstruida, no sobre la serie de diferencias.
+
+RECTA DE REGRESION SOBRE DIFERENCIAS
+  PH         Tasa   Normalizacion      MAE val     MAE test     MAE lab9
+  12        1e-07         ninguna    21.095259    23.025424    16.807851
+  24        1e-07         ninguna    19.776149    21.731748    13.816402
+  12         0.03          minmax    10.014451    13.176111    14.305248
+  24         0.03          minmax    10.001011     7.189529    12.093180
+  12         0.05          zscore    11.688460    12.553016    14.041879
+  24         0.05          zscore    13.271445     7.145261     8.826340
+
+KNN PONDERADO CON CORRELACION SOBRE DIFERENCIAS
+  PH    K      MAE val     MAE test     MAE lab9
+   6    1    28.536588    15.497607    21.460553
+   6    3    48.960606    55.561542    24.942604
+   6    5    47.032857    62.136979    21.023249
+  12    1    17.306495    15.497607    21.460553
+  12    3    12.675059    15.177043    22.220398
+  12    5    29.780740    12.075518    18.774739
+  24    1    11.778852    18.786525     6.418939
+  24    3    13.910283    14.894628    20.264276
+  24    5     8.742223    11.389868    19.523289
+  48    1    11.738374     7.915700     6.418939
+  48    3     9.808703     8.434832     6.231750
+  48    5    11.586009    17.357560     6.845120
+
+KNN CON HEURISTICA SOBRE DIFERENCIAS
+  PH    K      MAE val     MAE test     MAE lab9
+  24    1     9.189521     8.797374            -
+  24    3     5.946675    28.109301            -
+  24    5     5.740203    15.821450            -
+
+COMPARACION DE MEJORES MODELOS POR VALIDACION
+Modelo                      Original lab9     MAE lab9            Diferencias    MAE lab10   Mejora
+Recta regresion        PH=12, lr=0.05, zscore    14.041879 PH=24, lr=0.03, minmax     7.189529       Si
+kNN correlacion                PH=48, k=5     6.845120             PH=24, k=5    11.389868       No
+kNN heuristica                 PH=48, k=5     6.491298             PH=24, k=5    15.821450       No
+

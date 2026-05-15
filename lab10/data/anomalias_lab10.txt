@@ -1,0 +1,287 @@
+LABORATORIO 10 - DETECCION DE ANOMALIAS
+
+Pares correlacionados en el dia 1: 40
+  - V_0 / V_1
+  - V_0 / V_2
+  - V_0 / V_3
+  - V_0 / V_4
+  - V_1 / V_2
+  - V_1 / V_3
+  - V_1 / V_4
+  - V_2 / V_3
+  - V_2 / V_4
+  - V_3 / V_4
+  - V_5 / V_6
+  - V_5 / V_7
+  - V_5 / V_8
+  - V_5 / V_9
+  - V_6 / V_7
+  - V_6 / V_8
+  - V_6 / V_9
+  - V_7 / V_8
+  - V_7 / V_9
+  - V_8 / V_9
+  - V_10 / V_11
+  - V_10 / V_12
+  - V_10 / V_13
+  - V_10 / V_14
+  - V_11 / V_12
+  - V_11 / V_13
+  - V_11 / V_14
+  - V_12 / V_13
+  - V_12 / V_14
+  - V_13 / V_14
+  - V_15 / V_16
+  - V_15 / V_17
+  - V_15 / V_18
+  - V_15 / V_19
+  - V_16 / V_17
+  - V_16 / V_18
+  - V_16 / V_19
+  - V_17 / V_18
+  - V_17 / V_19
+  - V_18 / V_19
+
+Graficas exportadas:
+  - C:\Users\loren\FP2\lab10\data\series_originales_grupo_01.png
+  - C:\Users\loren\FP2\lab10\data\series_originales_grupo_02.png
+  - C:\Users\loren\FP2\lab10\data\series_originales_grupo_03.png
+  - C:\Users\loren\FP2\lab10\data\series_originales_grupo_04.png
+  - C:\Users\loren\FP2\lab10\data\series_originales_grupo_05.png
+  - C:\Users\loren\FP2\lab10\data\series_diferencias_grupo_01.png
+  - C:\Users\loren\FP2\lab10\data\series_diferencias_grupo_02.png
+  - C:\Users\loren\FP2\lab10\data\series_diferencias_grupo_03.png
+  - C:\Users\loren\FP2\lab10\data\series_diferencias_grupo_04.png
+  - C:\Users\loren\FP2\lab10\data\series_diferencias_grupo_05.png
+
+Umbral ruptura=0.15, separacion=15, duracion_minima=3
+  Dia 2: 6 intervalos detectados
+    V_0 / V_1: 585-738
+    V_0 / V_2: 585-738
+    V_1 / V_3: 584-739
+    V_1 / V_4: 584-740
+    V_2 / V_3: 585-740
+    V_2 / V_4: 584-740
+  Dia 3: 12 intervalos detectados
+    V_5 / V_6: 245-415
+    V_5 / V_7: 242-415
+    V_6 / V_8: 245-415
+    V_6 / V_9: 242-413
+    V_7 / V_8: 242-415
+    V_7 / V_9: 241-413
+    V_10 / V_11: 1138-1314
+    V_10 / V_12: 1139-1314
+    V_11 / V_13: 1138-1314
+    V_11 / V_14: 1138-1314
+    V_12 / V_13: 1138-1314
+    V_12 / V_14: 1138-1314
+  Dia 4: 6 intervalos detectados
+    V_15 / V_16: 724-862
+    V_15 / V_17: 722-863
+    V_16 / V_18: 724-864
+    V_16 / V_19: 722-862
+    V_17 / V_18: 724-865
+    V_17 / V_19: 721-862
+
+Umbral ruptura=0.15, separacion=15, duracion_minima=5
+  Dia 2: 6 intervalos detectados
+    V_0 / V_1: 585-738
+    V_0 / V_2: 585-738
+    V_1 / V_3: 584-739
+    V_1 / V_4: 584-740
+    V_2 / V_3: 585-740
+    V_2 / V_4: 584-740
+  Dia 3: 12 intervalos detectados
+    V_5 / V_6: 245-415
+    V_5 / V_7: 242-415
+    V_6 / V_8: 245-415
+    V_6 / V_9: 242-413
+    V_7 / V_8: 242-415
+    V_7 / V_9: 241-413
+    V_10 / V_11: 1138-1314
+    V_10 / V_12: 1139-1314
+    V_11 / V_13: 1138-1314
+    V_11 / V_14: 1138-1314
+    V_12 / V_13: 1138-1314
+    V_12 / V_14: 1138-1314
+  Dia 4: 6 intervalos detectados
+    V_15 / V_16: 724-862
+    V_15 / V_17: 722-863
+    V_16 / V_18: 724-864
+    V_16 / V_19: 722-862
+    V_17 / V_18: 724-865
+    V_17 / V_19: 721-862
+
+Umbral ruptura=0.15, separacion=20, duracion_minima=3
+  Dia 2: 6 intervalos detectados
+    V_0 / V_1: 585-738
+    V_0 / V_2: 585-738
+    V_1 / V_3: 584-739
+    V_1 / V_4: 584-740
+    V_2 / V_3: 585-740
+    V_2 / V_4: 584-740
+  Dia 3: 12 intervalos detectados
+    V_5 / V_6: 245-415
+    V_5 / V_7: 242-415
+    V_6 / V_8: 245-415
+    V_6 / V_9: 242-413
+    V_7 / V_8: 242-415
+    V_7 / V_9: 241-413
+    V_10 / V_11: 1138-1314
+    V_10 / V_12: 1139-1314
+    V_11 / V_13: 1138-1314
+    V_11 / V_14: 1138-1314
+    V_12 / V_13: 1138-1314
+    V_12 / V_14: 1138-1314
+  Dia 4: 6 intervalos detectados
+    V_15 / V_16: 724-862
+    V_15 / V_17: 722-863
+    V_16 / V_18: 724-864
+    V_16 / V_19: 722-862
+    V_17 / V_18: 724-865
+    V_17 / V_19: 721-862
+
+Umbral ruptura=0.15, separacion=20, duracion_minima=5
+  Dia 2: 6 intervalos detectados
+    V_0 / V_1: 585-738
+    V_0 / V_2: 585-738
+    V_1 / V_3: 584-739
+    V_1 / V_4: 584-740
+    V_2 / V_3: 585-740
+    V_2 / V_4: 584-740
+  Dia 3: 12 intervalos detectados
+    V_5 / V_6: 245-415
+    V_5 / V_7: 242-415
+    V_6 / V_8: 245-415
+    V_6 / V_9: 242-413
+    V_7 / V_8: 242-415
+    V_7 / V_9: 241-413
+    V_10 / V_11: 1138-1314
+    V_10 / V_12: 1139-1314
+    V_11 / V_13: 1138-1314
+    V_11 / V_14: 1138-1314
+    V_12 / V_13: 1138-1314
+    V_12 / V_14: 1138-1314
+  Dia 4: 6 intervalos detectados
+    V_15 / V_16: 724-862
+    V_15 / V_17: 722-863
+    V_16 / V_18: 724-864
+    V_16 / V_19: 722-862
+    V_17 / V_18: 724-865
+    V_17 / V_19: 721-862
+
+Umbral ruptura=0.0, separacion=15, duracion_minima=3
+  Dia 2: 6 intervalos detectados
+    V_0 / V_1: 596-736
+    V_0 / V_2: 596-736
+    V_1 / V_3: 595-736
+    V_1 / V_4: 595-736
+    V_2 / V_3: 595-736
+    V_2 / V_4: 590-736
+  Dia 3: 12 intervalos detectados
+    V_5 / V_6: 249-412
+    V_5 / V_7: 248-410
+    V_6 / V_8: 249-413
+    V_6 / V_9: 248-410
+    V_7 / V_8: 248-413
+    V_7 / V_9: 245-409
+    V_10 / V_11: 1140-1311
+    V_10 / V_12: 1143-1310
+    V_11 / V_13: 1139-1309
+    V_11 / V_14: 1139-1310
+    V_12 / V_13: 1139-1309
+    V_12 / V_14: 1139-1309
+  Dia 4: 6 intervalos detectados
+    V_15 / V_16: 738-855
+    V_15 / V_17: 737-855
+    V_16 / V_18: 743-855
+    V_16 / V_19: 737-854
+    V_17 / V_18: 739-855
+    V_17 / V_19: 733-855
+
+Umbral ruptura=0.0, separacion=15, duracion_minima=5
+  Dia 2: 6 intervalos detectados
+    V_0 / V_1: 596-736
+    V_0 / V_2: 596-736
+    V_1 / V_3: 595-736
+    V_1 / V_4: 595-736
+    V_2 / V_3: 595-736
+    V_2 / V_4: 590-736
+  Dia 3: 12 intervalos detectados
+    V_5 / V_6: 249-412
+    V_5 / V_7: 248-410
+    V_6 / V_8: 249-413
+    V_6 / V_9: 248-410
+    V_7 / V_8: 248-413
+    V_7 / V_9: 245-409
+    V_10 / V_11: 1140-1311
+    V_10 / V_12: 1143-1310
+    V_11 / V_13: 1139-1309
+    V_11 / V_14: 1139-1310
+    V_12 / V_13: 1139-1309
+    V_12 / V_14: 1139-1309
+  Dia 4: 6 intervalos detectados
+    V_15 / V_16: 738-855
+    V_15 / V_17: 737-855
+    V_16 / V_18: 743-855
+    V_16 / V_19: 737-854
+    V_17 / V_18: 739-855
+    V_17 / V_19: 733-855
+
+Umbral ruptura=0.0, separacion=20, duracion_minima=3
+  Dia 2: 6 intervalos detectados
+    V_0 / V_1: 596-736
+    V_0 / V_2: 596-736
+    V_1 / V_3: 595-736
+    V_1 / V_4: 595-736
+    V_2 / V_3: 595-736
+    V_2 / V_4: 590-736
+  Dia 3: 12 intervalos detectados
+    V_5 / V_6: 249-412
+    V_5 / V_7: 248-410
+    V_6 / V_8: 249-413
+    V_6 / V_9: 248-410
+    V_7 / V_8: 248-413
+    V_7 / V_9: 245-409
+    V_10 / V_11: 1140-1311
+    V_10 / V_12: 1143-1310
+    V_11 / V_13: 1139-1309
+    V_11 / V_14: 1139-1310
+    V_12 / V_13: 1139-1309
+    V_12 / V_14: 1139-1309
+  Dia 4: 6 intervalos detectados
+    V_15 / V_16: 738-855
+    V_15 / V_17: 737-855
+    V_16 / V_18: 743-855
+    V_16 / V_19: 737-854
+    V_17 / V_18: 739-855
+    V_17 / V_19: 733-855
+
+Umbral ruptura=0.0, separacion=20, duracion_minima=5
+  Dia 2: 6 intervalos detectados
+    V_0 / V_1: 596-736
+    V_0 / V_2: 596-736
+    V_1 / V_3: 595-736
+    V_1 / V_4: 595-736
+    V_2 / V_3: 595-736
+    V_2 / V_4: 590-736
+  Dia 3: 12 intervalos detectados
+    V_5 / V_6: 249-412
+    V_5 / V_7: 248-410
+    V_6 / V_8: 249-413
+    V_6 / V_9: 248-410
+    V_7 / V_8: 248-413
+    V_7 / V_9: 245-409
+    V_10 / V_11: 1140-1311
+    V_10 / V_12: 1143-1310
+    V_11 / V_13: 1139-1309
+    V_11 / V_14: 1139-1310
+    V_12 / V_13: 1139-1309
+    V_12 / V_14: 1139-1309
+  Dia 4: 6 intervalos detectados
+    V_15 / V_16: 738-855
+    V_15 / V_17: 737-855
+    V_16 / V_18: 743-855
+    V_16 / V_19: 737-854
+    V_17 / V_18: 739-855
+    V_17 / V_19: 733-855
